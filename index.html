@@ -1,0 +1,308 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090909">
+<title>GMFLIX</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090909;color:white;font-family:Arial,sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer;border:0;border-radius:5px;padding:10px}
+.red{background:#e50914;color:white}
+.gray{background:#333;color:white}
+header{position:sticky;top:0;z-index:5;background:#101010;padding:14px 5%;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.logo{font-size:26px;font-weight:900;color:#e50914}
+.head{display:flex;gap:8px}
+input,textarea,select{width:100%;background:#111;color:white;border:1px solid #444;border-radius:5px;padding:11px}
+.search{width:200px}
+.hero{min-height:320px;padding:50px 6%;display:flex;align-items:center;background-size:cover;background-position:center;position:relative}
+.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#090909 0%,#090909d9 45%,transparent),linear-gradient(0deg,#090909,transparent)}
+.heroContent{position:relative;max-width:500px}
+.hero h1{font-size:clamp(32px,6vw,55px);margin:0 0 10px}
+.hero p{line-height:1.6;color:#ddd}
+nav{display:flex;gap:8px;padding:18px 5% 0;flex-wrap:wrap}
+nav button{background:#252525;color:white;border-radius:20px}
+nav button.active{background:#e50914}
+main{padding:10px 5% 40px}
+.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.card{background:#191919;border-radius:7px;overflow:hidden;cursor:pointer}
+.poster{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#222}
+.info{padding:10px}
+.info h3{font-size:15px;margin:0 0 6px;overflow-wrap:anywhere}
+.meta{color:#aaa;font-size:12px}
+.modal{display:none;position:fixed;inset:0;z-index:20;background:#000d;padding:15px;overflow:auto;align-items:center;justify-content:center}
+.modal.active{display:flex}
+.box{width:100%;max-width:550px;max-height:95vh;overflow:auto;background:#191919;padding:20px;border-radius:10px}
+.field{margin:12px 0}
+.field label{display:block;margin-bottom:6px;font-size:13px;color:#ddd}
+.row,.actions{display:flex;gap:9px}
+.row>* ,.actions>*{flex:1;min-width:0}
+.actions{margin-top:15px}
+.note{font-size:12px;color:#aaa;line-height:1.5}
+.adminItem{display:flex;gap:8px;align-items:center;background:#292929;padding:8px;margin:8px 0;border-radius:6px}
+.adminItem img{width:40px;height:55px;object-fit:cover}
+.adminName{flex:1;overflow-wrap:anywhere;font-size:13px}
+.player{display:none;position:fixed;inset:0;background:black;z-index:30;align-items:center;justify-content:center}
+.player.active{display:flex}
+.player video{width:100%;height:100%;object-fit:contain}
+.ptop,.pcontrols{position:absolute;left:0;right:0;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:20px;background:linear-gradient(#000c,transparent)}
+.ptop{top:0;padding-top:max(20px,env(safe-area-inset-top))}
+.pcontrols{bottom:0;justify-content:center;gap:12px;padding-bottom:max(20px,env(safe-area-inset-bottom));background:linear-gradient(transparent,#000c)}
+.pcontrols button,.close{background:#333b;color:white}
+.close{font-size:24px;border-radius:50%}
+.player.controls-hidden .ptop,.player.controls-hidden .pcontrols{opacity:0;visibility:hidden;pointer-events:none}
+.ptop,.pcontrols{transition:opacity .3s,visibility .3s}
+footer{text-align:center;padding:25px;color:#777}
+#toast{display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:50;background:#333;padding:12px;border-radius:6px;max-width:90%}
+@media(max-width:900px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:550px){header{flex-wrap:wrap;padding:12px 4%}.head{width:100%}.search{width:0;flex:1}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}main{padding-left:4%;padding-right:4%}.hero{min-height:260px}}
+</style>
+</head>
+<body>
+<header>
+ <div class="logo">GMFLIX</div>
+ <div class="head">
+  <input id="search" class="search" type="search" placeholder="Search movies...">
+  <button class="red" id="adminOpen">Admin</button>
+ </div>
+</header>
+
+<section class="hero" id="hero">
+ <div class="heroContent">
+  <h1 id="heroTitle">Unlimited Entertainment.</h1>
+  <p id="heroDesc">Discover movies and series on GMFLIX.</p>
+  <button class="red" onclick="document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">Explore Movies</button>
+ </div>
+</section>
+
+<nav id="filters">
+ <button class="active" data-type="All">All</button>
+ <button data-type="Movie">Movies</button>
+ <button data-type="Series">Series</button>
+</nav>
+
+<main id="catalog">
+ <h2>Popular on GMFLIX</h2>
+ <div class="grid" id="grid"></div>
+ <p id="empty" hidden>No titles found.</p>
+</main>
+<footer>GMFLIX · Your entertainment space</footer>
+
+<div class="player" id="player">
+ <div class="ptop">
+  <strong id="playingTitle">Now Playing</strong>
+  <button class="close" id="closePlayer">×</button>
+ </div>
+ <video id="video" controls playsinline webkit-playsinline preload="metadata"></video>
+ <div class="pcontrols">
+  <button id="togglePlay">Play / Pause</button>
+  <button id="fullScreen">Fullscreen</button>
+ </div>
+</div>
+
+<div class="modal" id="adminModal">
+ <div class="box">
+  <h2>GMFLIX Admin</h2>
+  <p class="note">Banner edit, movie edit, add and delete tools.</p>
+
+  <h3>Homepage Banner</h3>
+  <div class="field"><label>Banner Image URL</label><input id="bannerImg" type="url" placeholder="https://example.com/banner.jpg"></div>
+  <div class="field"><label>Banner Title</label><input id="bannerText" maxlength="100"></div>
+  <div class="field"><label>Banner Description</label><textarea id="bannerDesc" rows="2"></textarea></div>
+  <button class="red" id="saveBanner">Save Banner</button>
+
+  <hr style="border-color:#444;margin:20px 0">
+  <h3 id="formTitle">Add Movie / Series</h3>
+  <form id="movieForm">
+   <input id="editId" type="hidden">
+   <div class="field"><label>Title *</label><input id="title" required maxlength="100"></div>
+   <div class="row">
+    <div class="field"><label>Type</label><select id="type"><option>Movie</option><option>Series</option></select></div>
+    <div class="field"><label>Year</label><input id="year" type="number" min="1900" max="2100"></div>
+   </div>
+   <div class="field"><label>Thumbnail URL *</label><input id="poster" type="url" required placeholder="https://example.com/poster.jpg"></div>
+   <div class="field"><label>Direct Video URL *</label><input id="source" type="url" required placeholder="https://example.com/movie.mp4"></div>
+   <div class="field"><label>Description</label><textarea id="description" rows="2"></textarea></div>
+   <div class="actions">
+    <button class="red" id="submitMovie" type="submit">Add Title</button>
+    <button class="gray" type="button" id="cancelEdit" hidden>Cancel Edit</button>
+   </div>
+  </form>
+
+  <hr style="border-color:#444;margin:20px 0">
+  <h3>Existing Movies / Series</h3>
+  <div id="adminList"></div>
+  <button class="gray" id="closeAdmin">Close</button>
+  <p class="note">Note: This GitHub Pages demo saves data in this browser only. To publish changes to every visitor, connect a secure online database/backend.</p>
+ </div>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const MOVIE_KEY="gmflix_movies_v3";
+const BANNER_KEY="gmflix_banner_v3";
+const defaultBanner={
+ image:"https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1600&q=80",
+ title:"Unlimited Entertainment.",
+ desc:"Discover movies and series on GMFLIX."
+};
+const samples=[
+ {id:"sample1",title:"Big Buck Bunny",type:"Movie",year:"2008",
+ poster:"https://peach.blender.org/wp-content/uploads/title_anouncement.jpg?x11217",
+ source:"https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+ description:"Sample video to test the player."},
+ {id:"sample2",title:"Elephant Dream",type:"Movie",year:"2006",
+ poster:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Elephants_Dream_s5_both.jpg/640px-Elephants_Dream_s5_both.jpg",
+ source:"https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+ description:"Sample video to test the player."}
+];
+function read(key,fallback){
+ try{const s=localStorage.getItem(key);return s===null?fallback:JSON.parse(s)}
+ catch(e){return fallback}
+}
+let movies=read(MOVIE_KEY,samples);
+if(!Array.isArray(movies))movies=samples.slice();
+let banner={...defaultBanner,...read(BANNER_KEY,{})};
+let filter="All",timer=null;
+
+function save(key,value){
+ try{localStorage.setItem(key,JSON.stringify(value));return true}
+ catch(e){notify("Could not save: browser storage may be full.");return false}
+}
+function notify(msg){
+ $("toast").textContent=msg;$("toast").style.display="block";
+ clearTimeout(notify.t);notify.t=setTimeout(()=>$("toast").style.display="none",3000);
+}
+function applyBanner(){
+ const img=(banner.image||defaultBanner.image).replace(/["\\]/g,"");
+ $("hero").style.backgroundImage=`linear-gradient(90deg,#090909 0%,#090909d9 45%,transparent),linear-gradient(0deg,#090909,transparent),url("${img}")`;
+ $("heroTitle").textContent=banner.title||defaultBanner.title;
+ $("heroDesc").textContent=banner.desc||"";
+ $("bannerImg").value=banner.image||"";
+ $("bannerText").value=banner.title||"";
+ $("bannerDesc").value=banner.desc||"";
+}
+function render(){
+ const q=$("search").value.trim().toLowerCase();
+ const list=movies.filter(m=>(filter==="All"||m.type===filter)&&
+  ((m.title+" "+(m.description||"")+" "+(m.year||"")).toLowerCase().includes(q)));
+ $("grid").replaceChildren();$("empty").hidden=list.length>0;
+ list.forEach(m=>{
+  const card=document.createElement("article");card.className="card";card.tabIndex=0;
+  const img=document.createElement("img");img.className="poster";img.alt=m.title;img.loading="lazy";img.src=m.poster;
+  img.onerror=()=>{img.removeAttribute("src");img.alt="Poster unavailable"};
+  const info=document.createElement("div");info.className="info";
+  const h=document.createElement("h3");h.textContent=m.title;
+  const meta=document.createElement("div");meta.className="meta";meta.textContent=[m.type,m.year].filter(Boolean).join(" • ");
+  info.append(h,meta);card.append(img,info);
+  card.onclick=()=>playMovie(m);card.onkeydown=e=>{if(e.key==="Enter")playMovie(m)};
+  $("grid").append(card);
+ });
+ renderAdmin();
+}
+function renderAdmin(){
+ const list=$("adminList");list.replaceChildren();
+ if(!movies.length){list.textContent="No titles yet.";return}
+ movies.forEach(m=>{
+  const row=document.createElement("div");row.className="adminItem";
+  const img=document.createElement("img");img.src=m.poster;img.alt="";
+  const name=document.createElement("div");name.className="adminName";name.textContent=m.title+" · "+m.type;
+  const edit=document.createElement("button");edit.className="gray";edit.textContent="Edit";edit.onclick=()=>startEdit(m.id);
+  const del=document.createElement("button");del.className="red";del.textContent="Delete";del.onclick=()=>removeMovie(m.id);
+  row.append(img,name,edit,del);list.append(row);
+ });
+}
+function resetForm(){
+ $("movieForm").reset();$("editId").value="";
+ $("formTitle").textContent="Add Movie / Series";$("submitMovie").textContent="Add Title";$("cancelEdit").hidden=true;
+}
+function startEdit(id){
+ const m=movies.find(x=>x.id===id);if(!m)return;
+ $("editId").value=m.id;$("title").value=m.title;$("type").value=m.type||"Movie";
+ $("year").value=m.year||"";$("poster").value=m.poster;$("source").value=m.source;
+ $("description").value=m.description||"";
+ $("formTitle").textContent="Edit Movie / Series";$("submitMovie").textContent="Save Changes";$("cancelEdit").hidden=false;
+ $("movieForm").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function removeMovie(id){
+ const m=movies.find(x=>x.id===id);if(!m||!confirm('Delete "'+m.title+'"?'))return;
+ const old=movies;movies=movies.filter(x=>x.id!==id);
+ if(save(MOVIE_KEY,movies)){if($("editId").value===id)resetForm();render();notify("Title deleted.");}
+ else movies=old;
+}
+$("movieForm").onsubmit=e=>{
+ e.preventDefault();
+ const id=$("editId").value;
+ const m={id:id||("m"+Date.now()),title:$("title").value.trim(),type:$("type").value,
+ year:$("year").value,poster:$("poster").value.trim(),source:$("source").value.trim(),
+ description:$("description").value.trim()};
+ const old=movies.slice();
+ if(id){const i=movies.findIndex(x=>x.id===id);if(i<0)return notify("Title not found.");movies[i]=m}
+ else movies.unshift(m);
+ if(save(MOVIE_KEY,movies)){resetForm();render();notify(id?"Changes saved.":"Title added.");}
+ else movies=old;
+};
+$("cancelEdit").onclick=resetForm;
+$("saveBanner").onclick=()=>{
+ const image=$("bannerImg").value.trim();
+ if(image&&!/^https?:\/\//i.test(image))return notify("Enter a valid image URL.");
+ const next={image:image||defaultBanner.image,title:$("bannerText").value.trim()||defaultBanner.title,desc:$("bannerDesc").value.trim()};
+ if(save(BANNER_KEY,next)){banner=next;applyBanner();notify("Banner saved in this browser.");}
+};
+$("adminOpen").onclick=()=>{$("adminModal").classList.add("active");renderAdmin()};
+$("closeAdmin").onclick=()=>$("adminModal").classList.remove("active");
+$("adminModal").onclick=e=>{if(e.target===$("adminModal"))$("adminModal").classList.remove("active")};
+$("search").oninput=render;
+$("filters").onclick=e=>{
+ const b=e.target.closest("button[data-type]");if(!b)return;
+ filter=b.dataset.type;
+ $("filters").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b));render();
+};
+
+function showControls(){
+ const p=$("player");if(!p.classList.contains("active"))return;
+ p.classList.remove("controls-hidden");clearTimeout(timer);
+ if(!$("video").paused)timer=setTimeout(()=>p.classList.add("controls-hidden"),3500);
+}
+function playMovie(m){
+ if(!m.source)return notify("Video URL missing.");
+ const v=$("video");clearTimeout(timer);
+ $("playingTitle").textContent=m.title;$("player").classList.add("active");$("player").classList.remove("controls-hidden");
+ v.pause();v.removeAttribute("src");v.load();v.src=m.source;v.load();
+ v.play().then(showControls).catch(()=>{showControls();notify("Press Play. This video format or URL may not work in Safari.")});
+}
+function closePlayer(){
+ clearTimeout(timer);const v=$("video");v.pause();v.removeAttribute("src");v.load();
+ $("player").classList.remove("active","controls-hidden");
+}
+$("closePlayer").onclick=closePlayer;
+$("video").addEventListener("play",showControls);
+$("video").addEventListener("pause",()=>{clearTimeout(timer);$("player").classList.remove("controls-hidden")});
+$("video").addEventListener("click",()=>{
+ const p=$("player");
+ if(p.classList.contains("controls-hidden"))showControls();
+ else{clearTimeout(timer);p.classList.add("controls-hidden")}
+});
+$("togglePlay").onclick=()=>{
+ const v=$("video");
+ if(v.paused)v.play().then(showControls).catch(()=>notify("Could not play this video."));
+ else v.pause();
+};
+$("fullScreen").onclick=async()=>{
+ const v=$("video");
+ try{
+  if(v.requestFullscreen)await v.requestFullscreen();
+  else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();
+  else notify("Fullscreen unavailable.");
+ }catch(e){if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();else notify("Fullscreen unavailable.");}
+};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closePlayer();$("adminModal").classList.remove("active")}});
+applyBanner();render();
+</script>
+</body>
+</html>
